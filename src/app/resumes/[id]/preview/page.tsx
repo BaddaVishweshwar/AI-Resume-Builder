@@ -1,22 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { 
-  FiDownload, 
-  FiEdit, 
-  FiShare2, 
-  FiChevronLeft, 
-  FiPrinter, 
-  FiLayout,
-  FiRotateCw
-} from 'react-icons/fi';
-import { toast } from 'react-hot-toast';
 import Link from 'next/link';
-
-// Components
-import ResumeTemplate from '@/components/resume/templates/ResumeTemplate';
+import { useSession } from 'next-auth/react';
+import { FiDownload, FiEdit, FiPrinter, FiShare2, FiRotateCw, FiChevronLeft } from 'react-icons/fi';
+import { toast } from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import TemplateSelector, { TemplateId } from '@/components/resume/TemplateSelector';
 
@@ -35,7 +24,8 @@ const templateComponents = {
 } as const;
 
 export default function ResumePreview() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params.id as string;
   const router = useRouter();
   const { data: session, status } = useSession();
   const [resume, setResume] = useState<ResumeType | null>(null);
@@ -44,25 +34,7 @@ export default function ResumePreview() {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('modern');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Handle authentication status
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    } else if (status === 'authenticated' && id) {
-      fetchResume();
-    }
-  }, [id, status, router]);
-
-  // Show loading state while checking auth status
-  if (status === 'loading') {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  const fetchResume = async () => {
+  const fetchResume = useCallback(async () => {
     try {
       setIsRefreshing(true);
       const response = await fetch(`/api/resumes/${id}`);
@@ -84,7 +56,25 @@ export default function ResumePreview() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [id]);
+
+  // Handle authentication status
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated' && id) {
+      fetchResume();
+    }
+  }, [id, status, router, fetchResume]);
+
+  // Show loading state while checking auth status
+  if (status === 'loading') {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   const handleTemplateChange = async (templateId: TemplateId) => {
     setSelectedTemplate(templateId);
@@ -116,15 +106,28 @@ export default function ResumePreview() {
   };
 
   const handleDownloadPDF = async () => {
+    if (!resume) return;
+    
     setIsDownloading(true);
     try {
-      // In a real app, this would generate a PDF
-      // For now, we'll just show a success message
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('PDF download started');
+      // This is a placeholder - in a real app, you would generate a PDF
+      // using a library like jsPDF or by calling an API endpoint
+      const response = await fetch(`/api/resumes/${id}/export?format=pdf`);
+      if (!response.ok) throw new Error('Failed to generate PDF');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${resume.title || 'resume'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success('PDF downloaded successfully');
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
+      console.error('Error downloading PDF:', error);
+      toast.error('Failed to download PDF');
     } finally {
       setIsDownloading(false);
     }
@@ -209,7 +212,7 @@ export default function ResumePreview() {
           </div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Resume Not Found</h2>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            We couldn't find the resume you're looking for. It may have been moved or deleted.
+            We couldn&apos;t find the resume you&apos;re looking for. It may have been moved or deleted.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-3">
             <button

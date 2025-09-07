@@ -16,7 +16,7 @@ export interface Section {
   resumeId: string;
   type: string;
   title: string;
-  content: Record<string, any>;
+  content: ProfileContent | ExperienceItem[] | EducationItem[] | SkillItem[] | ProjectItem[] | LanguageItem[] | CertificationItem[] | PublicationItem[] | VolunteerItem[] | Record<string, unknown>;
   position: number;
   isVisible: boolean;
   isDeleted?: boolean;
