@@ -1,6 +1,11 @@
 import { useRef } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
-import { FiGripVertical, FiX, FiEye, FiEyeOff, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
+
+type DragItem = {
+  id: string;
+  index: number;
+};
+import { FiMenu, FiX, FiEye, FiEyeOff, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { cn } from '@/lib/utils';
 import { Section } from '@/types/resume';
 
@@ -22,7 +27,7 @@ export default function SectionItem({
   onClick,
 }: SectionItemProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [{ isDragging }, drag] = useDrag({
+  const [{ isDragging }, drag] = useDrag<DragItem, void, { isDragging: boolean }>({
     type: 'SECTION',
     item: () => ({ id: section.id, index }),
     collect: (monitor) => ({
@@ -30,14 +35,9 @@ export default function SectionItem({
     }),
   });
 
-  const [{ handlerId }, drop] = useDrop({
+  const [, drop] = useDrop<DragItem, void, unknown>({
     accept: 'SECTION',
-    collect(monitor) {
-      return {
-        handlerId: monitor.getHandlerId(),
-      };
-    },
-    hover(item: { id: string; index: number }, monitor) {
+    hover: (item: DragItem, monitor: DropTargetMonitor<DragItem, void>) => {
       if (!ref.current) {
         return;
       }
@@ -53,14 +53,14 @@ export default function SectionItem({
       const hoverBoundingRect = ref.current?.getBoundingClientRect();
 
       // Get vertical middle
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const hoverMiddleY =
+        (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
 
       // Determine mouse position
       const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) return;
 
       // Get pixels to the top
-      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
 
       // Only perform the move when the mouse has crossed half of the items height
       // When dragging downwards, only move when the cursor is below 50%
@@ -78,11 +78,6 @@ export default function SectionItem({
 
       // Time to actually perform the action
       onMove(dragIndex, hoverIndex);
-
-      // Note: we're mutating the monitor item here!
-      // Generally it's better to avoid mutations,
-      // but it's good here for the sake of performance
-      // to avoid expensive index searches.
       item.index = hoverIndex;
     },
   });
@@ -110,14 +105,13 @@ export default function SectionItem({
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to remove this section?')) {
-      onUpdate(section.id, { _delete: true });
+      onUpdate(section.id, { isDeleted: true });
     }
   };
 
   return (
     <div
       ref={ref}
-      data-handler-id={handlerId}
       className={cn(
         'bg-white rounded-lg shadow overflow-hidden border',
         isActive ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200',
@@ -133,7 +127,7 @@ export default function SectionItem({
             className="text-gray-400 hover:text-gray-600 focus:outline-none"
             onClick={(e) => e.stopPropagation()}
           >
-            <FiGripVertical className="h-5 w-5" />
+            <FiMenu className="w-4 h-4 text-gray-400" />
           </button>
           <h3 className="text-sm font-medium text-gray-900">{section.title}</h3>
         </div>

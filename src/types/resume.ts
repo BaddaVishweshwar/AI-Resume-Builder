@@ -19,6 +19,7 @@ export interface Section {
   content: Record<string, any>;
   position: number;
   isVisible: boolean;
+  isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
 }
